@@ -2,25 +2,24 @@
 
 // Gulp v4
 // Based on list from: https://gist.github.com/demisx/beef93591edc1521330a
-var gulp = require('gulp')
-var path = require('path')
-var gulpPath = require('./gulp/gulp-paths.js')
-var error = require('./gulp/error-handler.js')
-var nodemon = require('gulp-nodemon')
 var browserSync = require('browser-sync')
-// var reload = browserSync.reload
-var shell = require('gulp-shell')
-var plumber = require('gulp-plumber')
-var del = require('del')
-var rename = require('gulp-rename')
 var cache = require('gulp-cached')
-var uglifyJs = require('gulp-uglify')
-var concat = require('gulp-concat')
-var sass = require('gulp-sass')
-var prefix = require('gulp-autoprefixer')
-var gulpIgnore = require('gulp-ignore')
 var cleanCSS = require('gulp-clean-css')
-var depcheck = require('depcheck')
+var concat = require('gulp-concat')
+var del = require('del')
+var depcheck = require('gulp-depcheck')
+var error = require('./gulp/gulp-error-handler.js')
+var gulp = require('gulp')
+var gulpIgnore = require('gulp-ignore')
+var gulpNSP = require('gulp-nsp')
+var gulpPath = require('./gulp/gulp-paths.js')
+var nodemon = require('gulp-nodemon')
+var path = require('path')
+var plumber = require('gulp-plumber')
+var prefix = require('gulp-autoprefixer')
+var rename = require('gulp-rename')
+var sass = require('gulp-sass')
+var uglifyJs = require('gulp-uglify')
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++ WATCH TASKS : +++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -33,9 +32,9 @@ gulp.task('watch-html', function () {
   })
 })
 
-// [watch-jade]
-gulp.task('watch-jade', function () {
-  var watcher = gulp.watch(gulpPath.to.jade.source, gulp.series('copy-jade'))
+// [watch-pug]
+gulp.task('watch-pug', function () {
+  var watcher = gulp.watch(gulpPath.to.pug.source, gulp.series('copy-pug'))
   watcher.on('change', function (path, stats) {
     console.log('File changed: ' + path)
   })
@@ -72,7 +71,7 @@ gulp.task('watch-assets', function () {
         'copy-css-vendor',
         'copy-js-vendor'
       ])
-    )
+  )
   watcher.on('change', function (path, stats) {
     console.log('File changed: ' + path)
   })
@@ -91,8 +90,8 @@ gulp.task('browser-sync', function (cb) {
     browser: ['google chrome canary'] // Default browser to open
   }, cb())
   // Set watch to automatically fresh browser when any of the sources changes
-  gulp.watch(gulpPath.to.html.destination + '/**/*.*').on('change', browserSync.reload) // public
-  // gulp.watch(gulpPath.to.views.destination + '/**/*.*').on('change', browserSync.reload) // views
+  gulp.watch(gulpPath.to.publicRoot + '/**/*.*').on('change', browserSync.reload) // public
+  gulp.watch(gulpPath.to.views.destination + '/**/*.*').on('change', browserSync.reload) // views
 })
 
 // [nodemon]
@@ -101,21 +100,21 @@ gulp.task('nodemon', function (cb) {
   var called = false
   return nodemon({
     script: './bin/www' // The entry point
-    // watch: ['source/**/*'] // The files to watch for changes in
+  // watch: ['source/**/*'] // The files to watch for changes in
   })
-  .on('start', function onStart () {
-    if (!called) {
-      cb()
-    } // To stop it constantly restarting
-    called = true
-  })
-  .on('restart', function onRestart () {
-    setTimeout(function reload () { // reload after short pause
-      browserSync.reload({
-        stream: false
-      })
-    }, 500)
-  })
+    .on('start', function onStart () {
+      if (!called) {
+        cb()
+      } // To stop it constantly restarting
+      called = true
+    })
+    .on('restart', function onRestart () {
+      setTimeout(function reload () { // reload after short pause
+        browserSync.reload({
+          stream: false
+        })
+      }, 500)
+    })
 })
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -142,10 +141,9 @@ gulp.task('js', function () {
 // Does auto-prefixing to support browser-specific css prefixes
 gulp.task('sass', function () {
   return gulp.src(gulpPath.to.sass.main)
-    // .pipe(cache('sass'))
     .pipe(sass())
     .on('error', error.handler)
-    .pipe(prefix('last 2 versions', {
+    .pipe(prefix(['last 2 versions', 'IE 9'], {
       cascade: true
     }))
     .on('error', error.handler)
@@ -157,14 +155,26 @@ gulp.task('sass', function () {
     }))
     .pipe(cleanCSS({
       debug: true,
-      compatibility: 'ie8',
+      compatibility: 'ie9',
       keepSpecialComments: 1
     }, function (details) {
       console.log(details.name + ': ' + details.stats.originalSize)
       console.log(details.name + ': ' + details.stats.minifiedSize)
     }))
     .pipe(gulp.dest(gulpPath.to.css.destination))
-    // .pipe(browserSync.reload({stream: true}))
+// .pipe(browserSync.reload({stream: true}))
+})
+
+// [postcss]
+gulp.task('postcss', function () {
+  var postcss = require('gulp-postcss')
+  var sourcemaps = require('gulp-sourcemaps')
+
+  return gulp.src('src/**/*.css')
+    .pipe(sourcemaps.init())
+    .pipe(postcss([ require('autoprefixer'), require('precss') ]))
+    .pipe(sourcemaps.write('.'))
+    .pipe(gulp.dest('build/'))
 })
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -176,10 +186,10 @@ gulp.task('copy-html', function () {
     .pipe(gulp.dest(gulpPath.to.html.destination))
 })
 
-// copy jade files into ./views
-gulp.task('copy-jade', function () {
-  return gulp.src(gulpPath.to.jade.source)
-    .pipe(gulp.dest(gulpPath.to.jade.destination))
+// copy pug files into ./views
+gulp.task('copy-pug', function () {
+  return gulp.src(gulpPath.to.pug.source)
+    .pipe(gulp.dest(gulpPath.to.pug.destination))
 })
 
 // copy images
@@ -250,13 +260,14 @@ gulp.task('paths', function (cb) {
   cb()
 })
 
-// [shell-command]
-gulp.task('shell-command', gulp.series(
-  shell.task(
-    [
-      'echo Installing dependencies...'
-    ]
-)))
+// [security]
+// Use gulp-nsp to check for security vulnerabilites
+gulp.task('security', function (cb) {
+  gulpNSP({
+    package: __dirname + '/package.json',
+    output: 'summary'
+  }, cb)
+})
 
 // [unused]
 // Task that determines which package dependencies are unused and unnecessary.
@@ -299,7 +310,7 @@ gulp.task('unused', function (cb) {
 // Sets gulp watches on files and will launch tasks when they are changed
 gulp.task('watch', gulp.parallel(
   'watch-html',
-  'watch-jade',
+  'watch-pug',
   'watch-sass',
   'watch-js',
   'watch-assets'
@@ -316,7 +327,7 @@ gulp.task('browse', gulp.series(
 // Copies files from ./dev to ./public
 gulp.task('copy', gulp.parallel(
   'copy-html',
-  'copy-jade',
+  'copy-pug',
   'copy-img',
   'copy-favicon',
   'copy-fonts',
@@ -338,13 +349,14 @@ gulp.task('build', gulp.series(
   'trash',
   'copy',
   'sass',
-  'js'
+  'js',
+  'security'
 ))
 
 // [default]
 // Default gulp task when you only type 'gulp'
 gulp.task('default', gulp.series(
-  'build',
+  // 'build',
   'browse',
   'watch'
 ))

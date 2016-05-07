@@ -15,8 +15,8 @@ module.exports = {
       source: devRoot + '/html/**/*.html',
       destination: publicRoot + '/html'
     },
-    jade: {
-      source: projectRoot + 'dev-views/**/*.jade',
+    pug: {
+      source: projectRoot + 'dev-views/**/*.pug',
       destination: projectRoot + 'views'
     },
     views: {
