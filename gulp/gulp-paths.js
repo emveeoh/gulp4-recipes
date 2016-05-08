@@ -11,17 +11,13 @@ module.exports = {
     devRoot: devRoot,
     publicRoot: publicRoot,
     destination: destination,
-    html: {
-      source: devRoot + '/html/**/*.html',
-      destination: publicRoot + '/html'
-    },
-    pug: {
-      source: projectRoot + 'dev-views/**/*.pug',
-      destination: projectRoot + 'views'
-    },
     views: {
-      source: projectRoot + 'dev-views',
+      source: devRoot + '/views/**/*.*',
       destination: projectRoot + 'views'
+    },
+    routes: {
+      source: devRoot + '/routes/**/*.*',
+      destination: projectRoot + 'routes'
     },
     css: {
       source: publicRoot + '/css/**/*.css',
@@ -35,7 +31,7 @@ module.exports = {
     },
     sass: {
       source: devRoot + '/sass/**/*.+(scss|sass)',
-      main: devRoot + '/sass/main.+(scss|sass)',
+      main: devRoot + '/sass/*.+(scss|sass)',
       destination: publicRoot + '/css'
     },
     js: {

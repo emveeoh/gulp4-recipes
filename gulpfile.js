@@ -24,17 +24,17 @@ var uglifyJs = require('gulp-uglify')
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++ WATCH TASKS : +++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// [watch-html]
-gulp.task('watch-html', function () {
-  var watcher = gulp.watch(gulpPath.to.html.source, gulp.series('copy-html'))
+// [watch-views]
+gulp.task('watch-views', function () {
+  var watcher = gulp.watch(gulpPath.to.views.source, gulp.series('copy-views'))
   watcher.on('change', function (path, stats) {
     console.log('File changed: ' + path)
   })
 })
 
-// [watch-pug]
-gulp.task('watch-pug', function () {
-  var watcher = gulp.watch(gulpPath.to.pug.source, gulp.series('copy-pug'))
+// [watch-routes]
+gulp.task('watch-routes', function () {
+  var watcher = gulp.watch(gulpPath.to.routes.source, gulp.series('copy-routes'))
   watcher.on('change', function (path, stats) {
     console.log('File changed: ' + path)
   })
@@ -91,6 +91,7 @@ gulp.task('browser-sync', function (cb) {
   }, cb())
   // Set watch to automatically fresh browser when any of the sources changes
   gulp.watch(gulpPath.to.publicRoot + '/**/*.*').on('change', browserSync.reload) // public
+  gulp.watch(gulpPath.to.routes.destination + '/**/*.*').on('change', browserSync.reload) // views
   gulp.watch(gulpPath.to.views.destination + '/**/*.*').on('change', browserSync.reload) // views
 })
 
@@ -100,7 +101,6 @@ gulp.task('nodemon', function (cb) {
   var called = false
   return nodemon({
     script: './bin/www' // The entry point
-  // watch: ['source/**/*'] // The files to watch for changes in
   })
     .on('start', function onStart () {
       if (!called) {
@@ -180,16 +180,17 @@ gulp.task('postcss', function () {
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++ COPY TASKS : ++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// copy html files
-gulp.task('copy-html', function () {
-  return gulp.src(gulpPath.to.html.source)
-    .pipe(gulp.dest(gulpPath.to.html.destination))
+
+// copy dev/views files into ./views
+gulp.task('copy-views', function () {
+  return gulp.src(gulpPath.to.views.source)
+    .pipe(gulp.dest(gulpPath.to.views.destination))
 })
 
-// copy pug files into ./views
-gulp.task('copy-pug', function () {
-  return gulp.src(gulpPath.to.pug.source)
-    .pipe(gulp.dest(gulpPath.to.pug.destination))
+// copy dev/routes files into ./routes
+gulp.task('copy-routes', function () {
+  return gulp.src(gulpPath.to.routes.source)
+    .pipe(gulp.dest(gulpPath.to.routes.destination))
 })
 
 // copy images
@@ -236,7 +237,7 @@ gulp.task('flush-cache', function (cb) {
 gulp.task('trash-public', function () {
   return del([
     path.join(gulpPath.to.publicRoot + '/**'),
-    path.join('!' + gulpPath.to.publicRoot)
+    path.join('!' + gulpPath.to.publicRoot) // don't delete root folder
   ])
 })
 
@@ -245,7 +246,16 @@ gulp.task('trash-public', function () {
 gulp.task('trash-views', function () {
   return del([
     path.join(gulpPath.to.views.destination + '/**'),
-    path.join('!' + gulpPath.to.views.destination)
+    path.join('!' + gulpPath.to.views.destination) // don't delete root folder
+  ])
+})
+
+// [trash-routes]
+// Remove all contents of the ./routes folder
+gulp.task('trash-routes', function () {
+  return del([
+    path.join(gulpPath.to.routes.destination + '/**'),
+    path.join('!' + gulpPath.to.routes.destination) // don't delete root folder
   ])
 })
 
@@ -267,6 +277,13 @@ gulp.task('security', function (cb) {
     package: __dirname + '/package.json',
     output: 'summary'
   }, cb)
+})
+
+// [security-msg]
+// Reminder message to run gulp security to check for bad modules
+gulp.task('security-msg', function (cb) {
+  console.log('====================================================================\n SECURITY REMINDER: Run [ gulp security ] before deployment.\n====================================================================')
+  cb()
 })
 
 // [unused]
@@ -309,8 +326,8 @@ gulp.task('unused', function (cb) {
 // [watch]
 // Sets gulp watches on files and will launch tasks when they are changed
 gulp.task('watch', gulp.parallel(
-  'watch-html',
-  'watch-pug',
+  'watch-views',
+  'watch-routes',
   'watch-sass',
   'watch-js',
   'watch-assets'
@@ -326,8 +343,8 @@ gulp.task('browse', gulp.series(
 // [copy]
 // Copies files from ./dev to ./public
 gulp.task('copy', gulp.parallel(
-  'copy-html',
-  'copy-pug',
+  'copy-routes',
+  'copy-views',
   'copy-img',
   'copy-favicon',
   'copy-fonts',
@@ -340,7 +357,8 @@ gulp.task('copy', gulp.parallel(
 gulp.task('trash', gulp.parallel(
   'flush-cache',
   'trash-public',
-  'trash-views'
+  'trash-views',
+  'trash-routes'
 ))
 
 // [build]
@@ -350,7 +368,7 @@ gulp.task('build', gulp.series(
   'copy',
   'sass',
   'js',
-  'security'
+  'security-msg'
 ))
 
 // [default]
