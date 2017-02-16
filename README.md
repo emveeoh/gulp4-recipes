@@ -1,1 +1,1 @@
-These gulp tasks use gulp v.4 alpha 2
+These gulp tasks use gulp version 4
